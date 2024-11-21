@@ -1,0 +1,154 @@
+// + : add edge(u, v)
+// - : delete add(u, v)
+// ? : count number components
+#include<iostream>
+#include<iomanip>
+#include<algorithm>
+#include<stack>
+#include<queue>
+#include<string>
+#include<string.h>
+#include<cmath>
+#include<vector>
+#include<map>
+#include<unordered_map>
+#include<set>
+#include<unordered_set>
+#include<cstdio>
+#include<bitset>
+#include<chrono>
+#include<random>
+#include<ext/rope>
+/* ordered_set
+#include<ext/pb_ds/assoc_container.hpp>
+#include<ext/pb_ds/tree_policy.hpp>
+using namespace __gnu_pbds;
+#define ordered_set tree<int, null_type,less<int>, rb_tree_tag,tree_order_statistics_node_update>
+*/
+#define int long long
+#define pb push_back
+#define fi first
+#define se second
+using namespace std;
+using ll = long long;
+using ld = long double;
+using ull = unsigned long long;
+mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+const int maxN = 1e6 + 5;
+const int mod = 1e9 + 7;
+const ll oo = 1e18;
+int n, q;
+int lab[maxN];
+int res[maxN];
+int lastl[maxN], lastr[maxN];
+map<pair<int, int>, int> mp;
+char op[maxN];
+struct TEdge
+{
+    int u, v;
+} e[maxN];
+void ReadInput()
+{
+    cin >> n >> q;
+    for(int i=1; i<=q; i++)
+    {
+        char type;
+        cin >> type;
+        op[i] = type;
+        if(type == '?')
+        {
+            res[i] = 1;
+            continue;
+        }
+        int u, v;
+        cin >> u >> v;
+        if(u > v) swap(u, v);
+        e[i] = {u, v};
+    }
+    for(int i=1; i<=q; i++)
+    {
+        if(res[i]) continue;
+        int u = e[i].u, v = e[i].v;
+        if(op[i] == '+') mp[{u, v}] = i;
+        else
+        {
+            lastl[i] = mp[{u, v}];
+            lastr[mp[{u, v}]] = i;
+            mp.erase({u, v});
+        }
+    }
+    for(pair<pair<int, int>, int> v : mp)
+    {
+        q++;
+        op[q] = '-';
+        lastl[q] = v.se;
+        lastr[v.se] = q;
+        e[q] = e[v.se];
+    }
+}
+vector<pair<int, int>> vc;
+int ans = 0;
+int Findset(int u)
+{
+    return lab[u] < 0 ? u : Findset(lab[u]);
+}
+void Unite(int u, int v)
+{
+    int r = Findset(u), s = Findset(v);
+    if(r == s) return;
+    if(lab[r] > lab[s]) swap(r, s);
+    vc.pb({r, lab[r]});
+    vc.pb({s, lab[s]});
+    lab[r] += lab[s];
+    lab[s] = r;
+    ans--;
+}
+void rollback(int sz)
+{
+    int cnt = 0;
+    while(vc.size() > sz)
+    {
+        auto v = vc.back();
+        vc.pop_back();
+        lab[v.fi] = v.se;
+        cnt++;
+    }
+    ans += cnt / 2;
+}
+void DnC(int l, int r)
+{
+    if(l == r)
+    {
+        if(res[l]) cout << ans << '\n';
+        return;
+    }
+    int s = vc.size();
+    int mid = (l + r) / 2;
+    for(int i=mid+1; i<=r; i++)
+    {
+        if(op[i] == '-' && lastl[i] < l) Unite(e[i].u, e[i].v);
+    }
+    DnC(l, mid);
+    rollback(s);
+    s = vc.size();
+    for(int i=l; i<=mid; i++)
+    {
+        if(op[i] == '+' && lastr[i] > r) Unite(e[i].u, e[i].v);
+    }
+    DnC(mid + 1, r);
+    rollback(s);
+}
+void Solve()
+{
+    if(!q) return;
+    ans = n;
+    memset(lab, -1, sizeof lab);
+    DnC(1, q);
+}
+int32_t main()
+{
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+    ReadInput();
+    Solve();
+}
