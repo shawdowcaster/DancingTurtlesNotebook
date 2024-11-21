@@ -1,36 +1,47 @@
-/**
- * Author: chilli, pajenegod
- * Date: 2020-02-20
- * License: CC0
- * Source: Folklore
- * Description: Data structure for computing lowest common ancestors in a tree
- * (with 0 as root). C should be an adjacency list of the tree, either directed
- * or undirected.
- * Time: $O(N \log N + Q)$
- * Status: stress-tested
- */
-#pragma once
+void Log()
+{
+    for(int i=2; i<maxN; i++) lg[i] = lg[i / 2] + 1;
+}
+void dfs(int u, int par)
+{
+    pos[u] = tour.size();
+    tour.pb(u);
+    for(int v : adj[u])
+    {
+        if(v == par) continue;
+        depth[v] = depth[u] + 1;
+        dfs(v, u);
+        tour.pb(u);
+    }
+}
+int mini(int u, int v)
+{
+    return depth[u] < depth[v] ? u : v;
+}
+void build_LCA()
+{
+    depth[1] = 1;
+    tour.clear();
+    dfs(1, 0);
+    for (int i = 0; i < tour.size(); i++)
+    {
+        rmq[i][0] = tour[i];
+    }
 
-#include "../data-structures/RMQ.h"
-
-struct LCA {
-	int T = 0;
-	vi time, path, ret;
-	RMQ<int> rmq;
-
-	LCA(vector<vi>& C) : time(sz(C)), rmq((dfs(C,0,-1), ret)) {}
-	void dfs(vector<vi>& C, int v, int par) {
-		time[v] = T++;
-		for (int y : C[v]) if (y != par) {
-			path.push_back(v), ret.push_back(time[v]);
-			dfs(C, y, v);
-		}
-	}
-
-	int lca(int a, int b) {
-		if (a == b) return a;
-		tie(a, b) = minmax(time[a], time[b]);
-		return path[rmq.query(a, b)];
-	}
-	//dist(a,b){return depth[a] + depth[b] - 2*depth[lca(a,b)];}
-};
+    for (int i = 1; i <=20; i++)
+    {
+        for (int j = 0; j < tour.size(); j++)
+        {
+            if (j + (1 << (i - 1)) >= tour.size())
+                rmq[j][i] = rmq[j][i - 1];
+            else
+                rmq[j][i] = mini(rmq[j][i - 1], rmq[j + (1 << (i - 1))][i - 1]);
+        }
+    }
+}
+int LCA(int u, int v)
+{
+    int l = min(pos[u], pos[v]), r = max(pos[u], pos[v]);
+    int k = lg[r - l + 1];
+    return mini(rmq[l][k], rmq[r - (1 << k) + 1][k]);
+}
