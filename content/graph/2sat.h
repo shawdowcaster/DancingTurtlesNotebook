@@ -1,77 +1,83 @@
-/**
- * Author: Emil Lenngren, Simon Lindholm
- * Date: 2011-11-29
- * License: CC0
- * Source: folklore
- * Description: Calculates a valid assignment to boolean variables a, b, c,... to a 2-SAT problem,
- * so that an expression of the type $(a||b)\&\&(!a||c)\&\&(d||!b)\&\&...$
- * becomes true, or reports that it is unsatisfiable.
- * Negated variables are represented by bit-inversions (\texttt{\tilde{}x}).
- * Usage:
- *  TwoSat ts(number of boolean variables);
- *  ts.either(0, \tilde3); // Var 0 is true or var 3 is false
- *  ts.setValue(2); // Var 2 is true
- *  ts.atMostOne({0,\tilde1,2}); // <= 1 of vars 0, \tilde1 and 2 are true
- *  ts.solve(); // Returns true iff it is solvable
- *  ts.values[0..N-1] holds the assigned values to the vars
- * Time: O(N+E), where N is the number of boolean variables, and E is the number of clauses.
- * Status: stress-tested
- */
-#pragma once
 
-struct TwoSat {
-	int N;
-	vector<vi> gr;
-	vi values; // 0 = false, 1 = true
+struct two_sat
+{
+    static constexpr int N = 1e6 + 5;
+    int n;
+    vector<int> adj[N];
+    int vis[N];
+    int low[N], num[N], Time = 0;
+    int node[N], nNode = 0;
+    vector<int> S;
+    void init(int _n)
+    {
+        n = _n;
+        Time = nNode = 0;
+        for(int i=0; i<=n*2; i++)
+        {
+            vis[i] = 0;
+            low[i] = num[i] = 0;
+            node[i] = 0;
+            adj[i].clear();
+        }
+        S.clear();
+    }
+    int rev(int a)
+    {
+        if(a <= n) return a + n;
+        else return a - n;
+    }
+    void add_edge(int a, int b)
+    {
+        adj[rev(a)].pb(b);
+        adj[rev(b)].pb(a);
+    }
+    void add_or(int a, int b) // at least 1 of them true
+    {
+        add_edge(a, b);
+    }
+    void add_xor(int a, int b) // only one of them true
+    {
+        add_or(a, b);
+        add_or(rev(a), rev(b));
+    }
+    void add_and(int a, int b) // they must be the same
+    {
+        add_xor(a, rev(b));
+    }
+    void dfs(int u)
+    {
+        S.pb(u);
+        low[u] = num[u] = ++Time;
+        for(int v : adj[u])
+        {
+            if(num[v] == -1) continue;
+            if(num[v]) low[u] = min(low[u], num[v]);
+            else
+            {
+                dfs(v);
+                low[u] = min(low[u], low[v]);
+            }
+        }
+        if(low[u] == num[u])
+        {
+            nNode++;
+            while(!S.empty())
+            {
+                int v = S.back();
+                S.pop_back();
+                node[v] = nNode;
+                num[v] = -1;
+                if(v == u) break;
+            }
+        }
+    }
+    bool is_good()
+    {
+        for(int i=1; i<=n*2; i++)
+            if(!num[i]) dfs(i);
 
-	TwoSat(int n = 0) : N(n), gr(2*n) {}
-
-	int addVar() { // (optional)
-		gr.emplace_back();
-		gr.emplace_back();
-		return N++;
-	}
-
-	void either(int f, int j) {
-		f = max(2*f, -1-2*f);
-		j = max(2*j, -1-2*j);
-		gr[f].push_back(j^1);
-		gr[j].push_back(f^1);
-	}
-	void setValue(int x) { either(x, x); }
-
-	void atMostOne(const vi& li) { // (optional)
-		if (sz(li) <= 1) return;
-		int cur = ~li[0];
-		rep(i,2,sz(li)) {
-			int next = addVar();
-			either(cur, ~li[i]);
-			either(cur, next);
-			either(~li[i], next);
-			cur = ~next;
-		}
-		either(cur, ~li[1]);
-	}
-
-	vi val, comp, z; int time = 0;
-	int dfs(int i) {
-		int low = val[i] = ++time, x; z.push_back(i);
-		for(int e : gr[i]) if (!comp[e])
-			low = min(low, val[e] ?: dfs(e));
-		if (low == val[i]) do {
-			x = z.back(); z.pop_back();
-			comp[x] = low;
-			if (values[x>>1] == -1)
-				values[x>>1] = x&1;
-		} while (x != i);
-		return val[i] = low;
-	}
-
-	bool solve() {
-		values.assign(N, -1);
-		val.assign(2*N, 0); comp = val;
-		rep(i,0,2*N) if (!comp[i]) dfs(i);
-		rep(i,0,N) if (comp[2*i] == comp[2*i+1]) return 0;
-		return 1;
-	}
+        for(int i=1; i<=n; i++)
+            if(node[i] == node[rev(i)]) return false;
+        return true;
+    }
 };
