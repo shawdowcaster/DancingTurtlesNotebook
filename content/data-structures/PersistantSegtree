@@ -1,0 +1,78 @@
+struct persistent_segtree
+{
+    int n;
+    struct TNode
+    {
+        int left, right;
+        ll val;
+    };
+    vector<TNode> st;
+    int nNode = 0, nVer = 0;
+    vector<int> ver;
+    void init(int _n)
+    {
+        n = _n;
+        st.clear();
+        st.resize(n * 4 * 17, {});
+        ver.pb(0);
+    }
+    inline void refine(int cur)
+    {
+        st[cur].val = (st[st[cur].left].val + st[st[cur].right].val);
+    }
+    int build(int l, int r)
+    {
+        ++nNode;
+        int cur = nNode;
+        if(l == r)
+        {
+            st[nNode].val = 0;
+            return nNode;
+        }
+        int mid = (l + r) / 2;
+        st[cur].left = build(l, mid);
+        st[cur].right = build(mid + 1, r);
+        refine(cur);
+        return cur;
+    }
+    int update(int l, int r, int pos, int val, int oldId)
+    {
+        if(l == r)
+        {
+            ++nNode;
+            st[nNode] = {0, 0, val};
+            return nNode;
+        }
+        int mid = (l + r) / 2;
+        int cur = ++nNode;
+        if(pos <= mid)
+        {
+            st[cur].left = update(l, mid, pos, val, st[oldId].left);
+            st[cur].right = st[oldId].right;
+            refine(cur);
+        }
+        else
+        {
+            st[cur].left = st[oldId].left;
+            st[cur].right = update(mid + 1, r, pos, val, st[oldId].right);
+            refine(cur);
+        }
+        return cur;
+    }
+    ll get(int id, int l, int r, int u, int v)
+    {
+        if(l > v | r < u) return 0;
+        if(l >= u && r <= v) return st[id].val;
+        int mid = (l + r) / 2;
+        return get(st[id].left, l, mid, u, v) + get(st[id].right, mid + 1, r, u, v);
+    }
+    void upd(int u, int x)
+    {
+        ++nVer;
+        ver.pb(update(1, n, u, x, ver[nVer - 1]));
+    }
+    int query(int t, int u, int v)
+    {
+        return get(ver[t], 1, n, u, v);
+    }
+};
