@@ -1,37 +1,43 @@
 /**
- * Author: Simon Lindholm
+ * Author: Nguyen Tri Tam
  * Date: 2016-01-14
  * License: CC0
  * Description: Given a rooted tree and a subset S of nodes, compute the minimal
  * subtree that contains all the nodes by adding all (at most $|S|-1$)
  * pairwise LCA's and compressing edges.
- * Returns a list of (par, orig\_index) representing a tree rooted at 0.
+ * Returns a vector of edges in the virtual tree
  * The root points to itself.
  * Time: $O(|S| \log |S|)$
  * Status: Tested at CodeForces
  */
-#pragma once
-
-#include "LCA.h"
-
-typedef vector<pair<int, int>> vpi;
-vpi compressTree(LCA& lca, const vi& subset) {
-	static vi rev; rev.resize(sz(lca.time));
-	vi li = subset, &T = lca.time;
-	auto cmp = [&](int a, int b) { return T[a] < T[b]; };
-	sort(all(li), cmp);
-	int m = sz(li)-1;
-	rep(i,0,m) {
-		int a = li[i], b = li[i+1];
-		li.push_back(lca.lca(a, b));
-	}
-	sort(all(li), cmp);
-	li.erase(unique(all(li)), li.end());
-	rep(i,0,sz(li)) rev[li[i]] = i;
-	vpi ret = {pii(0, li[0])};
-	rep(i,0,sz(li)-1) {
-		int a = li[i], b = li[i+1];
-		ret.emplace_back(rev[lca.lca(a, b)], b);
-	}
-	return ret;
+vector<pair<int, int>> build_virtual_tree(vector<int>& vc)
+{
+    int k = vc.size();
+    sort(vc.begin(), vc.end(), [](int i, int j)
+    {
+        return tin[i] < tin[j];
+    });
+    for(int i=0; i<k; i++)
+    {
+        if(i < k - 1) vc.pb(lca(vc[i], vc[i + 1]));
+        if(jump[vc[i]][0]) vc.pb(jump[vc[i]][0]);
+    }
+    sort(vc.begin(), vc.end());
+    vc.erase(unique(vc.begin(), vc.end()), vc.end());
+    sort(vc.begin(), vc.end(), [](int i, int j)
+    {
+        return tin[i] > tin[j];
+    });
+    stack<int> S;
+    vector<pair<int, int>> edges;
+    for(int v : vc)
+    {
+        while(!S.empty() && chk(v, S.top()))
+        {
+            edges.pb({v, S.top()});
+            S.pop();
+        }
+        S.push(v);
+    }
+    return edges;
 }
