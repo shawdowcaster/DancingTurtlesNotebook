@@ -1,0 +1,170 @@
+#include<bits/stdc++.h>
+
+#define int long long
+#define pb push_back
+#define fi first
+#define se second
+using namespace std;
+using ll = long long;
+using ld = long double;
+using ull = unsigned long long;
+mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+const int maxN = 1e6 + 5;
+const int mod = 1e9 + 7;
+const ll oo = 1e18;
+int n, q;
+int a[maxN], b[maxN];
+vector<int> vc;
+int cnt[maxN];
+int num[maxN];
+int ans[maxN];
+const int base = 2700;
+struct TQuery
+{
+    int type, l, r, t, id;
+} qu[maxN];
+int id(int x)
+{
+    return upper_bound(vc.begin(), vc.end(), x) - vc.begin();
+}
+vector<tuple<int, int, int>> query;
+void ReadInput()
+{
+    cin >> n >> q;
+    for(int i=1; i<=n; i++)
+    {
+        cin >> a[i];
+        b[i] = a[i];
+        vc.pb(a[i]);
+    }
+    int t = 0;
+    for(int i=1; i<=q; i++)
+    {
+        cin >> qu[i].type;
+        qu[i].id = i;
+        if(qu[i].type == 1)
+        {
+
+            cin >> qu[i].l >> qu[i].r;
+            qu[i].t = t;
+        }
+
+        else
+        {
+            int p, x;
+            cin >> p >> x;
+            vc.pb(x);
+            query.pb({p, x, b[p]});
+            b[p] = x;
+            t++;
+        }
+    }
+    sort(vc.begin(), vc.end());
+    vc.erase(unique(vc.begin(), vc.end()), vc.end());
+    for(int i=1; i<=n; i++)
+        a[i] = id(a[i]);
+    for(auto &[p, x, oldp] : query)
+    {
+        x = id(x);
+        oldp = id(oldp);
+    }
+}
+void add(int x)
+{
+    num[cnt[x]]--;
+    cnt[x]++;
+    num[cnt[x]]++;
+}
+void del(int x)
+{
+    num[cnt[x]]--;
+    cnt[x]--;
+    num[cnt[x]]++;
+}
+void Solve()
+{
+    sort(qu + 1, qu + q + 1, [](TQuery p, TQuery q)
+    {
+        tuple<int, int, int> val1 = {p.t / base, p.l / base, p.r}, val2 = {q.t / base, q.l / base, q.r};
+        return val1 < val2;
+    });
+    int l = 1, r = 0, t = 0;
+    for(int i=1; i<=q; i++)
+    {
+        if(qu[i].type == 2) continue;
+        while(l < qu[i].l)
+        {
+            del(a[l]);
+            l++;
+        }
+        while(l > qu[i].l)
+        {
+            l--;
+            add(a[l]);
+        }
+
+        while(r < qu[i].r)
+        {
+            r++;
+            add(a[r]);
+        }
+        while(r > qu[i].r)
+        {
+            del(a[r]);
+            r--;
+        }
+        while(t < qu[i].t)
+        {
+            auto &[p, x, oldp] = query[t];
+            if(p < l || p > r)
+            {
+                a[p] = x;
+                t++;
+                continue;
+            }
+            del(a[p]);
+            a[p] = x;
+            add(a[p]);
+            t++;
+        }
+        while(t > qu[i].t)
+        {
+            t--;
+            auto &[p, x, oldp] = query[t];
+            //cout << t << " ";
+            if(p < l || p > r)
+            {
+                a[p] = oldp;
+                continue;
+            }
+            del(a[p]);
+            a[p] = oldp;
+            add(a[p]);
+        }
+
+        int res = 1;
+        while(num[res]) res++;
+        ans[qu[i].id] = res;
+    }
+
+    for(int i=1; i<=q; i++)
+        if(ans[i]) cout << ans[i] << '\n';
+}
+#define taskname "sol"
+int32_t main()
+{
+    if (fopen(taskname ".inp", "r"))
+    {
+        freopen(taskname ".inp", "r", stdin);
+        //freopen(taskname ".out", "w", stdout);
+    }
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+    int T = 1;
+    //cin >> T;
+    for(int itest=1; itest<=T; itest++)
+    {
+        ReadInput();
+        Solve();
+    }
+}
