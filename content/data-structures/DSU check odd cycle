@@ -1,0 +1,25 @@
+int lab[maxN], parity[maxN];
+int _u, lu, _v, lv, pare;
+pair<int, int> Findset(int u)
+{
+    int w = 0;
+    while(lab[u] > 0)
+    {
+        w ^= parity[u];
+        u = lab[u];
+    }
+    return {u, w};
+}
+bool Unite(int u, int v)
+{
+    _u = -1;
+    pair<int, int> r = Findset(u), s = Findset(v);
+    if(r.fi == s.fi) return r.se != s.se;
+    if(lab[r.fi] > lab[s.fi]) swap(r, s);
+    u = r.fi, v = s.fi;
+    _u = u, lu = lab[u], _v = v, lv = lab[v], pare = parity[v];
+    lab[u] += lab[v];
+    lab[v] = u;
+    parity[v] = r.se ^ s.se ^ 1;
+    return 1;
+}
