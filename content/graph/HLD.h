@@ -1,65 +1,60 @@
-/**
- * Author: Benjamin Qi, Oleksandr Kulkov, chilli
- * Date: 2020-01-12
- * License: CC0
- * Source: https://codeforces.com/blog/entry/53170, https://github.com/bqi343/USACO/blob/master/Implementations/content/graphs%20(12)/Trees%20(10)/HLD%20(10.3).h
- * Description: Decomposes a tree into vertex disjoint heavy paths and light
- * edges such that the path from any leaf to the root contains at most log(n)
- * light edges. Code does additive modifications and max queries, but can
- * support commutative segtree modifications/queries on paths and subtrees.
- * Takes as input the full adjacency list. VALS\_EDGES being true means that
- * values are stored in the edges, as opposed to the nodes. All values
- * initialized to the segtree default. Root must be 0.
- * Time: O((\log N)^2)
- * Status: stress-tested against old HLD
- */
-#pragma once
 
-#include "../data-structures/LazySegmentTree.h"
-
-template <bool VALS_EDGES> struct HLD {
-	int N, tim = 0;
-	vector<vi> adj;
-	vi par, siz, rt, pos;
-	Node *tree;
-	HLD(vector<vi> adj_)
-		: N(sz(adj_)), adj(adj_), par(N, -1), siz(N, 1),
-		  rt(N),pos(N),tree(new Node(0, N)){ dfsSz(0); dfsHld(0); }
-	void dfsSz(int v) {
-		if (par[v] != -1) adj[v].erase(find(all(adj[v]), par[v]));
-		for (int& u : adj[v]) {
-			par[u] = v;
-			dfsSz(u);
-			siz[v] += siz[u];
-			if (siz[u] > siz[adj[v][0]]) swap(u, adj[v][0]);
-		}
-	}
-	void dfsHld(int v) {
-		pos[v] = tim++;
-		for (int u : adj[v]) {
-			rt[u] = (u == adj[v][0] ? rt[v] : u);
-			dfsHld(u);
-		}
-	}
-	template <class B> void process(int u, int v, B op) {
-		for (; rt[u] != rt[v]; v = par[rt[v]]) {
-			if (pos[rt[u]] > pos[rt[v]]) swap(u, v);
-			op(pos[rt[v]], pos[v] + 1);
-		}
-		if (pos[u] > pos[v]) swap(u, v);
-		op(pos[u] + VALS_EDGES, pos[v] + 1);
-	}
-	void modifyPath(int u, int v, int val) {
-		process(u, v, [&](int l, int r) { tree->add(l, r, val); });
-	}
-	int queryPath(int u, int v) { // Modify depending on problem
-		int res = -1e9;
-		process(u, v, [&](int l, int r) {
-				res = max(res, tree->query(l, r));
-		});
-		return res;
-	}
-	int querySubtree(int v) { // modifySubtree is similar
-		return tree->query(pos[v] + VALS_EDGES, pos[v] + siz[v]);
-	}
-};
+void dfs(int u)
+{
+    sz[u] = 1;
+    for(int v : adj[u])
+    {
+        if(p[u] == v) continue;
+        p[v] = u;
+        depth[v] = depth[u] + 1;
+        dfs(v);
+        sz[u] += sz[v];
+    }
+}
+void HLD(int u)
+{
+    if(!chainhead[nChain]) chainhead[nChain] = u;
+    chainid[u] = nChain;
+    int bigChild = -1;
+    timein[u] = ++Time;
+    for(int v : adj[u])
+    {
+        if(v == p[u]) continue;
+        if(bigChild == -1 || sz[bigChild] < sz[v])
+            bigChild = v;
+    }
+    if(bigChild != -1) HLD(bigChild);
+    for(int v : adj[u])
+    {
+        if(v == p[u] || v == bigChild) continue;
+        nChain++;
+        HLD(v);
+    }
+}
+int LCA(int u, int v)
+{
+    while(chainhead[chainid[u]] != chainhead[chainid[v]])
+    {
+        if(depth[chainhead[chainid[u]]] < depth[chainhead[chainid[v]]]) swap(u, v);
+        u = p[chainhead[chainid[u]]];
+    }
+    if(depth[u] > depth[v]) swap(u, v);
+    return u;
+}
+int dist(int u, int v)
+{
+    return depth[u] + depth[v] - 2 * depth[LCA(u, v)];
+}
+int Query(int u, int v)
+{
+    int res = 0;
+    while(chainhead[chainid[u]] != chainhead[chainid[v]])
+    {
+        if(depth[chainhead[chainid[u]]] < depth[chainhead[chainid[v]]]) swap(u, v);
+        res += get(1, 1, n, timein[chainhead[chainid[u]]], timein[u]);
+        u = p[chainhead[chainid[u]]];
+    }
+    if(depth[u] > depth[v]) swap(u, v);
+    res += get(1, 1, n, timein[u], timein[v]);
+    return res;
+}
