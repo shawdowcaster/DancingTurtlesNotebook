@@ -1,0 +1,196 @@
+// Make the best become better
+// No room for laziness
+#include<bits/stdc++.h>
+
+#define int long long
+#define pb push_back
+#define fi first
+#define se second
+using namespace std;
+using ll = long long;
+using ld = long double;
+using ull = unsigned long long;
+mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+const int maxN = 1e6 + 5;
+const int mod = 1e9 + 7;
+const ll oo = 1e18;
+int n, m, q;
+int a[maxN];
+vector<int> adj[maxN], Adj[maxN];
+int node[maxN];
+int bcc = 0;
+stack<int> S;
+int low[maxN], num[maxN], Time = 0;
+int p[maxN];
+multiset<int> val[maxN];
+int timein[maxN];
+int sz[maxN], depth[maxN];
+int chainhead[maxN], chainid[maxN], nChain = 0;
+int num_bcc[maxN];
+void ReadInput()
+{
+    cin >> n >> m >> q;
+    for(int i=1; i<=n; i++) cin >> a[i];
+    for(int i=1; i<=m; i++)
+    {
+        int u, v;
+        cin >> u >> v;
+        adj[u].pb(v);
+        adj[v].pb(u);
+    }
+}
+void dfs(int u, int par)
+{
+    num[u] = low[u] = ++Time;
+    S.push(u);
+    for(int v : adj[u])
+    {
+        if(v == par) continue;
+        if(num[v]) low[u] = min(low[u], num[v]);
+        else
+        {
+            dfs(v, u);
+            low[u] = min(low[u], low[v]);
+            if(low[v] >= num[u])
+            {
+                bcc++;
+             //   cout << u << " " << n + bcc << '\n';
+                Adj[u].pb(n + bcc);
+                p[n + bcc] = u;
+                Adj[n + bcc].pb(u);
+                while(!S.empty())
+                {
+                    int x = S.top();
+                    S.pop();
+                    p[x] = n + bcc;
+                    Adj[x].pb(n + bcc);
+                    Adj[n + bcc].pb(x);
+                    num_bcc[x] = n + bcc;
+                    val[n + bcc].insert(a[x]);
+                    if(x == v) break;
+                }
+            }
+        }
+    }
+}
+void predfs(int u, int par)
+{
+    sz[u] = 1;
+    for(int v : Adj[u])
+    {
+        if(v == par) continue;
+        depth[v] = depth[u] + 1;
+        predfs(v, u);
+        sz[u] += sz[v];
+    }
+}
+void HLD(int u)
+{
+    if(!chainhead[nChain]) chainhead[nChain] = u;
+    chainid[u] = nChain;
+    timein[u] = ++Time;
+    node[Time] = u;
+    int bigChild = -1;
+    for(int v : Adj[u])
+    {
+        if(v == p[u]) continue;
+        if(bigChild == -1 | sz[bigChild] < sz[v]) bigChild = v;
+    }
+    if(bigChild != -1) HLD(bigChild);
+    for(int v : Adj[u])
+    {
+        if(v == p[u] || v == bigChild) continue;
+        nChain++;
+        HLD(v);
+    }
+}
+int st[4 * maxN];
+void build(int id, int l, int r)
+{
+    if(l == r)
+    {
+        if(node[l] <= n) st[id] = a[node[l]];
+        else st[id] = *val[node[l]].begin();
+        return;
+    }
+    int mid = (l + r) / 2;
+    build(id * 2, l, mid);
+    build(id * 2 + 1, mid + 1, r);
+    st[id] = min(st[id * 2], st[id * 2 + 1]);
+}
+void update(int id, int l, int r, int pos, int val)
+{
+    if(l > pos || r < pos) return;
+    if(l == r && l == pos)
+    {
+        st[id] = val;
+        return;
+    }
+    int mid = (l + r) / 2;
+    update(id * 2, l, mid, pos, val);
+    update(id * 2 + 1, mid + 1, r, pos, val);
+    st[id] = min(st[id * 2], st[id * 2 + 1]);
+}
+int get(int id, int l, int r, int u, int v)
+{
+    if(l > v || r < u) return oo;
+    if(l >= u && r <= v) return st[id];
+    int mid = (l + r) / 2;
+    return min(get(id * 2, l, mid, u, v), get(id * 2 + 1, mid + 1, r, u, v));
+}
+int Query(int u, int v)
+{
+    int res = oo;
+    while(chainid[u] != chainid[v])
+    {
+        if(depth[chainhead[chainid[u]]] < depth[chainhead[chainid[v]]]) swap(u, v);
+        res = min(res, get(1, 1, n + bcc, timein[chainhead[chainid[u]]], timein[u]));
+        u = p[chainhead[chainid[u]]];
+    }
+    if(depth[u] > depth[v]) swap(u, v);
+    res = min(res, get(1, 1, n + bcc, timein[u], timein[v]));
+    if(u > n) res = min(res, a[p[u]]);
+    return res;
+}
+void Solve()
+{
+    dfs(1, 0);
+    predfs(1, 0);
+    Time = 0;
+    HLD(1);
+    build(1, 1, n + bcc);
+    while(q--)
+    {
+        char type;
+        cin >> type;
+        if(type == 'A')
+        {
+            int u, v;
+            cin >> u >> v;
+            cout << Query(u, v) << '\n';
+        }
+        else
+        {
+            int i, v;
+            cin >> i >> v;
+            update(1, 1, n + bcc, timein[i], v);
+            if(num_bcc[i])
+            {
+                int u = num_bcc[i];
+                val[u].erase(val[u].find(a[i]));
+                a[i] = v;
+                val[u].insert(a[i]);
+                update(1, 1, n + bcc, timein[u], *val[u].begin());
+            }
+            a[i] = v;
+        }
+    }
+}
+int32_t main()
+{
+   // freopen("x.inp", "r", stdin);
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+    ReadInput();
+    Solve();
+}
