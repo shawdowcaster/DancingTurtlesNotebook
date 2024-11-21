@@ -1,41 +1,74 @@
-/**
- * Author: 罗穗骞, chilli
- * Date: 2019-04-11
- * License: Unknown
- * Source: Suffix array - a powerful tool for dealing with strings
- * (Chinese IOI National team training paper, 2009)
- * Description: Builds suffix array for a string.
- * \texttt{sa[i]} is the starting index of the suffix which
- * is $i$'th in the sorted suffix array.
- * The returned vector is of size $n+1$, and \texttt{sa[0] = n}.
- * The \texttt{lcp} array contains longest common prefixes for
- * neighbouring strings in the suffix array:
- * \texttt{lcp[i] = lcp(sa[i], sa[i-1])}, \texttt{lcp[0] = 0}.
- * The input string must not contain any zero bytes.
- * Time: O(n \log n)
- * Status: stress-tested
- */
-#pragma once
-
-struct SuffixArray {
-	vi sa, lcp;
-	SuffixArray(string& s, int lim=256) { // or basic_string<int>
-		int n = sz(s) + 1, k = 0, a, b;
-		vi x(all(s)), y(n), ws(max(n, lim));
-		x.push_back(0), sa = lcp = y, iota(all(sa), 0);
-		for (int j = 0, p = 0; p < n; j = max(1, j * 2), lim = p) {
-			p = j, iota(all(y), n - j);
-			rep(i,0,n) if (sa[i] >= j) y[p++] = sa[i] - j;
-			fill(all(ws), 0);
-			rep(i,0,n) ws[x[i]]++;
-			rep(i,1,lim) ws[i] += ws[i - 1];
-			for (int i = n; i--;) sa[--ws[x[y[i]]]] = y[i];
-			swap(x, y), p = 1, x[sa[0]] = 0;
-			rep(i,1,n) a = sa[i - 1], b = sa[i], x[b] =
-				(y[a] == y[b] && y[a + j] == y[b + j]) ? p - 1 : p++;
-		}
-		for (int i = 0, j; i < n - 1; lcp[x[i++]] = k)
-			for (k && k--, j = sa[x[i] - 1];
-					s[i + k] == s[j + k]; k++);
-	}
-};
+vector<int> suffix_array(string s)
+{
+    int n = s.size();
+    int alp = 256;
+    vector<int> p(n), c(n), cnt(max(alp, n), 0);
+    for (int i = 0; i < n; i++)
+        cnt[s[i]]++;
+    for (int i = 1; i < alp; i++)
+        cnt[i] += cnt[i-1];
+    for (int i = 0; i < n; i++)
+        p[--cnt[s[i]]] = i;
+    c[p[0]] = 0;
+    int cls = 1;
+    for (int i = 1; i < n; i++)
+    {
+        if (s[p[i]] != s[p[i-1]])
+            cls++;
+        c[p[i]] = cls - 1;
+    }
+    vector<int> pn(n), cn(n);
+    for (int h = 0; (1 << h) < n; ++h)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            pn[i] = p[i] - (1 << h);
+            if (pn[i] < 0)
+                pn[i] += n;
+        }
+        fill(cnt.begin(), cnt.begin() + cls, 0);
+        for (int i = 0; i < n; i++)
+            cnt[c[pn[i]]]++;
+        for (int i = 1; i < cls; i++)
+            cnt[i] += cnt[i-1];
+        for (int i = n-1; i >= 0; i--)
+            p[--cnt[c[pn[i]]]] = pn[i];
+        cn[p[0]] = 0;
+        cls = 1;
+        for (int i = 1; i < n; i++)
+        {
+            pair<int, int> cur = {c[p[i]], c[(p[i] + (1 << h)) % n]};
+            pair<int, int> prev = {c[p[i-1]], c[(p[i-1] + (1 << h)) % n]};
+            if (cur != prev)
+                ++cls;
+            cn[p[i]] = cls - 1;
+        }
+        c.swap(cn);
+    }
+    return p;
+}
+vector<int> lcp_construction(string s, vector<int> p) /// lcp sa(i), sa(i+1)
+{
+    int n = s.size();
+    vector<int> rank(n, 0);
+    for (int i = 0; i < n; i++)
+        rank[p[i]] = i;
+ 
+    int k = 0;
+    vector<int> lcp(n-1, 0);
+    for (int i = 0; i < n; i++)
+    {
+        if (rank[i] == n - 1)
+        {
+            k = 0;
+            continue;
+        }
+        int j = p[rank[i] + 1];
+        while (i + k < n && j + k < n && s[i+k] == s[j+k])
+            k++;
+        lcp[rank[i]] = k;
+        if (k)
+            k--;
+    }
+    return lcp;
+}
